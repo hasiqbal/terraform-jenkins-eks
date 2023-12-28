@@ -62,7 +62,7 @@ pipeline {
         stage('Deploying Nginx Application') {
             steps{
                 script{
-                    dir('/ConfigurationFiles') {
+                    dir('/config') {
                         sh 'aws  update-kubeconfig --name my--cluster'
                         sh 'kubectl apply -f deployment.yaml'
                         sh 'kubectl apply -f service.yaml'
