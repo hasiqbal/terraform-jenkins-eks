@@ -1,14 +1,7 @@
 #vpc
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
 
-  name = "jenkins-vpc"
-  cidr = var.vpc_cidr
-
-  azs            = data.aws_availability_zones.azs.names
-  public_subnets = var.public_subnet
-
-  enable_dns_hostnames = true
+resource "aws_vpc" "vpc-jenkins" {
+  cidr_block = var.vpc_cidr
 
   tags = {
     Name        = "jenkins-vpc"
@@ -19,59 +12,47 @@ module "vpc" {
 
 #sg
 
-module "sg" {
-  source = "terraform-aws-modules/security-group/aws"
+resource "aws_security_group" "sg_jenkins" {
+
 
   name        = "jenkins-sg"
   description = "Security Group for Jenkins Server"
-  vpc_id      = module.vpc.vpc_id
 
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 8080
-      to_port     = 8080
-      protocol    = "tcp"
-      description = "HTTP"
-      cidr_blocks = "0.0.0.0/0"
-    },
-    {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      description = "SSH"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
+  ingress {
 
-  egress_with_cidr_blocks = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
-
-  tags = {
-    Name = "jenkins-sg"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    description = "SSH"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    description = "HTTP Jenkins server"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 #ec2
 
-module "ec2_instance" {
-  source = "terraform-aws-modules/ec2-instance/aws"
-
-  name = "Jenkins-Server"
-
+resource "aws_instance" "jenkins_server" {
+  ami                         = var.ami
   instance_type               = var.instance_type
   key_name                    = "Jenkins-server"
   monitoring                  = true
-  vpc_security_group_ids      = [module.sg.security_group_id]
-  subnet_id                   = module.vpc.public_subnets[0]
   associate_public_ip_address = true
   user_data                   = file("jenkins-install.sh")
   availability_zone           = data.aws_availability_zones.azs.names[0]
+  vpc_security_group_ids      = [aws_security_group.sg_jenkins.id]
+
 
   tags = {
     Name        = "Jenkins-Server"
@@ -79,3 +60,4 @@ module "ec2_instance" {
     Environment = "dev"
   }
 }
+

@@ -12,3 +12,8 @@ variable "instance_type" {
   description = "Instance Type"
   type        = string
 }
+
+variable "ami" {
+  description = "ami type"
+  type        = string
+}
